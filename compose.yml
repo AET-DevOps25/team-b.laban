@@ -27,3 +27,15 @@ services:
     depends_on:
       - server
     restart: unless-stopped
+  genai:
+    image: ecopharmai-genai:latest
+    build:
+      context: ./genai/ecopharmai
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-your-api-key}
+    volumes:
+      - ./genai/ecopharmai/app:/app/app
+    restart: unless-stopped
