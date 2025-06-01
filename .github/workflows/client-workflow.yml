@@ -1,0 +1,84 @@
+name: Client WorkFlow
+
+on:
+  push:
+    paths:
+      - "client/**"
+      - ".github/workflows/client-workflow.yml"
+    branches:
+      - "main"
+      - "feature/**"
+
+jobs:
+  build:
+    if: startsWith(github.ref, 'refs/heads/feature/')
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --include=dev
+        working-directory: client
+
+      - name: Build with Node
+        run: npm run build
+        working-directory: client
+
+  docker-release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      NODE_ENV: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (for jq if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Extract version from package.json
+        id: get-version
+        run: |
+          VERSION=$(jq -r .version client/package.json)
+          echo "IMAGE_TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image with version tag
+        working-directory: client
+        run: |
+          docker build -t ghcr.io/aet-devops25/team-b.laban/client:${{ env.IMAGE_TAG }} .
+
+      - name: Tag Docker image as latest
+        run: |
+          docker tag ghcr.io/aet-devops25/team-b.laban/client:${{ env.IMAGE_TAG }} \
+                     ghcr.io/aet-devops25/team-b.laban/client:latest
+
+      - name: Push Docker image with version tag
+        run: docker push ghcr.io/aet-devops25/team-b.laban/client:${{ env.IMAGE_TAG }}
+
+      - name: Push Docker image with latest tag
+        run: docker push ghcr.io/aet-devops25/team-b.laban/client:latest
