@@ -28,11 +28,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install --include=dev
-        working-directory: client
+        working-directory: client/ecopharmai
 
       - name: Build with Node
         run: npm run build
-        working-directory: client
+        working-directory: client/ecopharmai
 
   docker-release:
     if: github.ref == 'refs/heads/main'
@@ -57,7 +57,7 @@ jobs:
       - name: Extract version from package.json
         id: get-version
         run: |
-          VERSION=$(jq -r .version client/package.json)
+          VERSION=$(jq -r .version client/ecopharmai/package.json)
           echo "IMAGE_TAG=$VERSION" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
@@ -68,7 +68,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image with version tag
-        working-directory: client
+        working-directory: client/ecopharmai
         run: |
           docker build -t ghcr.io/aet-devops25/team-b.laban/client:${{ env.IMAGE_TAG }} .
 
